@@ -12,17 +12,19 @@ class AverageRateTracker:
         self._recent_count: int = 0
         self._recent_time: float = time.time()
         self._duration_window: float = duration_window
-        self._recent_rate: float = 0.0
+        self._recent_rate: [float, None] = None
 
-    def increment(self, inc: int) -> None:
+    def increment(self, inc: int = 1) -> None:
         self._recent_count += inc
-
-    def get_smoothed_rate(self) -> float:
         current_time = time.time()
         elapsed_time = current_time - self._recent_time
         if elapsed_time > self._duration_window:
             self._recent_rate = self._recent_count / elapsed_time
             self._recent_count = 0
             self._recent_time = current_time
+            return self._recent_rate
+        else:
+            return None
 
+    def get_smoothed_rate(self) -> float:
         return self._recent_rate
