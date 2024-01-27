@@ -39,7 +39,7 @@ if __name__ == "__main__":
     config = habitat.get_config(
         config_path="benchmark/rearrange/pick.yaml",
         overrides=[
-            "habitat.environment.max_episode_steps=20",
+
             "habitat.environment.iterator_options.shuffle=False",
         ],
     )
@@ -49,6 +49,19 @@ if __name__ == "__main__":
     except NameError:
         pass
     env = habitat.Env(config=config)
+from habitat.core.dataset import Dataset, Episode
+
+dataset = env._dataset
+def filter_fn(episode: Episode) -> bool:
+    return int(episode.episode_id) < 3 
+
+
+filtered_dataset = dataset.filter_episodes(filter_fn)
+assert len(filtered_dataset.episodes) == 3
+for ep in filtered_dataset.episodes:
+        print(ep.info)
+        assert filter_fn(ep)
+env._dataset = filtered_dataset
 
 def display_sample(
     rgb_obs, semantic_obs=np.array([]), depth_obs=np.array([])):  # noqa: B006
@@ -83,7 +96,22 @@ def display_sample(
         plt.imshow(data)
     plt.show(block=False)
 
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision.models as models
+from gym import spaces
+# import habitat_baselines.rl.ddppo.policy as pol
+from habitat_baselines.rl.ddppo.policy import ( 
+    PointNavResNetNet,
+    PointNavResNetPolicy,
+)
+from habitat_baselines.config.default import get_config
+from typing import Dict, Optional
+import torchvision.transforms as transforms
+import torchvision.transforms.functional as TF
+import os
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 class MyPolicy(nn.Module):
     def __init__(self, **kwargs):
         super(MyPolicy, self).__init__()
@@ -123,7 +151,7 @@ class MyPolicy(nn.Module):
             # if torch.cuda.is_available()
             # else torch.device("cpu")
         )
-        model_weights_path = '/home/anand/Downloads/pointnav_weights.pth'  # Replace with the actual path to your model weights file
+        model_weights_path = '/nethome/asingh3064/flash/habitat-lab/examples/tutorials/pointnav_weights.pth'  # Replace with the actual path to your model weights file
 
         pretrained_state = torch.load(model_weights_path, map_location="cuda:0")
 
@@ -162,21 +190,25 @@ class MyPolicy(nn.Module):
     def forward(self, obs):
         # Extract observations
         depth_image = obs['head_depth']
-  
+        import pdb
+        pdb.set_trace()
+        print(env.sim.get_agent_state())
+        print(env.sim.target_start_pos)
+
         relative_position = obs["obj_start_sensor"] 
-        # print(relative_position)
+        print(relative_position)
         rho = np.linalg.norm(relative_position)
         theta = np.arctan2(relative_position[1], relative_position[0])
         display_sample(obs["head_depth"])
 
-        depth_image_tensor = torch.from_numpy(depth_image.transpose(2, 0, 1)).unsqueeze(0).float()  # Transpose to (1, 256, 256)
+        depth_image_tensor = torch.from_numpy(depth_image.transpose(2, 0, 1)).unsqueeze(0).float()  # Transpose to (1, 256, 256)tmux ls
         depth_image_tensor = depth_image_tensor.permute(0, 1, 3, 2)  # Transpose to (1, 256, 256)
         # print(depth_image_tensor.size())
 
         # Define the transformation to resize the image
         with torch.no_grad():
             resized_depth_image_tensor = F.interpolate(depth_image_tensor, size=(224, 224), mode='bilinear', align_corners=False)
-            resized_depth_image_tensor /= 5.0       
+            # resized_depth_image_tensor /= 5.0       
         resized_depth_image_tensor = resized_depth_image_tensor.permute(0,2,3,1)  
         # print(resized_depth_image_tensor.size())
         device = torch.device("cuda:0")  # Assuming you want to use GPU 0
@@ -208,32 +240,29 @@ class MyPolicy(nn.Module):
 
 
 pol=MyPolicy()
-# Set the model to evaluation mode
-# pol.eval()
-obs = env.reset()  
+obs=env.reset()
 action = pol.forward(obs)
+action = 1
 
 valid_actions = ["stop","move_forward","turn_left", "turn_right"]
 action = valid_actions[action]
-
+# print(env.observation_space)
 interactive_control = False  # @param {type:"boolean"}
-while action != "stop":
-    display_sample(obs["head_rgb"])
-    print(
-        "distance to goal: {:.2f}".format(
-            obs["ee_pos"][0]
+while not env.episode_over:
+    observations = env.step(env.action_space.sample())  # noqa: F841
+    info = env.get_metrics()
+    print(env.current_episode.episode_id)
+    while action != "stop":
+        display_sample(obs["head_rgb"])
+        obs = env.step(
+            {
+                "action": action,
+                "action_args": None,
+            }
         )
-    )
-    print(
-        "angle to goal (radians): {:.2f}".format(
-            obs["ee_pos"][1]
-        )
-    )
-    obs = env.step(
-        {
-            "action": action,
-        }
-    )
-    print(action)
+        action = pol.forward(obs)
+        action = valid_actions[action]
+        print(action)
+
 
 env.close()
