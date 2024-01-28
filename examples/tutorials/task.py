@@ -43,7 +43,8 @@ if __name__ == "__main__":
             "habitat.environment.iterator_options.shuffle=False",
         ],
     )
-
+    # import pdb
+    # pdb.set_trace()
     try:
         env.close()  # type: ignore[has-type]
     except NameError:
@@ -111,6 +112,9 @@ from typing import Dict, Optional
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import os
+from lavis.models import load_model_and_preprocess
+
+from collections import OrderedDict
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 class MyPolicy(nn.Module):
     def __init__(self, **kwargs):
@@ -190,8 +194,8 @@ class MyPolicy(nn.Module):
     def forward(self, obs):
         # Extract observations
         depth_image = obs['head_depth']
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         print(env.sim.get_agent_state())
         print(env.sim.target_start_pos)
 
@@ -232,7 +236,6 @@ class MyPolicy(nn.Module):
         # Convert action logits to actions (0: stop, 1: move forward, 2: pivot left, 3: pivot right)
         action = torch.argmax(action_logits.actions, dim=1).item()
         values = torch.argmax(action_logits.values, dim=1).item()
-        print("Action: ",action)
         display_sample(obs["head_rgb"])
 
         return action
@@ -240,9 +243,13 @@ class MyPolicy(nn.Module):
 
 
 pol=MyPolicy()
+device = torch.device("cuda") 
+model, vis_processors, _ = load_model_and_preprocess(name="blip2_t5", model_type="pretrain_flant5xxl", is_eval=True, device=device)
+
 obs=env.reset()
 action = pol.forward(obs)
 action = 1
+print("Action: ",action)
 
 valid_actions = ["stop","move_forward","turn_left", "turn_right"]
 action = valid_actions[action]
@@ -254,14 +261,18 @@ while not env.episode_over:
     print(env.current_episode.episode_id)
     while action != "stop":
         display_sample(obs["head_rgb"])
-        obs = env.step(
-            {
-                "action": action,
-                "action_args": None,
-            }
-        )
+        action=1
+        # pdb.set_trace()
+
+        sampled_values = OrderedDict([
+            ("action", "base_velocity"),  
+            ('action_args', {'base_vel': np.array([2.800232  ,  2.4734697], dtype = np.float32),  
+            })
+        ])
+        obs = env.step(sampled_values)
         action = pol.forward(obs)
         action = valid_actions[action]
+        action=1
         print(action)
 
 
