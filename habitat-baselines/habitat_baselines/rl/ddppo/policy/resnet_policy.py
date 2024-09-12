@@ -225,6 +225,7 @@ class ResNetEncoder(nn.Module):
                     / (final_spatial_h * final_spatial_w)
                 )
             )
+            self.adaptive_pool = nn.AdaptiveAvgPool2d((5, 4))
             self.compression = nn.Sequential(
                 nn.Conv2d(
                     self.backbone.final_channels,
@@ -290,6 +291,7 @@ class ResNetEncoder(nn.Module):
 
         x = self.running_mean_and_var(x)
         x = self.backbone(x)
+        x = self.adaptive_pool(x) 
         x = self.compression(x)
         return x
 
@@ -302,8 +304,8 @@ class ResNetCLIPEncoder(nn.Module):
     ):
         super().__init__()
 
-        self.rgb = "rgb" in observation_space.spaces
-        self.depth = "depth" in observation_space.spaces
+        self.rgb = "head_rgb" in observation_space.spaces
+        self.depth = "head_depth" in observation_space.spaces
 
         # Determine which visual observations are present
         self.visual_keys = [
@@ -372,7 +374,7 @@ class ResNetCLIPEncoder(nn.Module):
 
         cnn_input = []
         if self.rgb:
-            rgb_observations = observations["rgb"]
+            rgb_observations = observations["head_rgb"]
             rgb_observations = rgb_observations.permute(
                 0, 3, 1, 2
             )  # BATCH x CHANNEL x HEIGHT X WIDTH
@@ -383,7 +385,7 @@ class ResNetCLIPEncoder(nn.Module):
             cnn_input.append(rgb_x)
 
         if self.depth:
-            depth_observations = observations["depth"][
+            depth_observations = observations["head_depth"][
                 ..., 0
             ]  # [BATCH x HEIGHT X WIDTH]
             ddd = torch.stack(

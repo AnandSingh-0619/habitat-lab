@@ -57,7 +57,7 @@ class BaseTrainer:
                     "configuration than the one used for the original training run. "
                     "Since load_resume_state_config=True, the ORIGINAL configuration "
                     "will be used and the new configuration will be IGNORED."
-                    "##################\n"
+                    "Using new config##################\n"
                 )
             return resume_state_config
         return self.config.copy()

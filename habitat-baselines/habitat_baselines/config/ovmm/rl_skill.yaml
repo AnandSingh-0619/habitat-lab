@@ -23,7 +23,7 @@ habitat_baselines:
   num_environments: 20
   checkpoint_folder: "data/new_checkpoints"
   num_updates: -1
-  total_num_steps: 1.0e8
+  total_num_steps: 3.0e8
   log_interval: 10
   num_checkpoints: 20
   # Force PyTorch to be single threaded as
@@ -119,11 +119,11 @@ habitat_baselines:
       # Initialize just the visual encoder backbone with pretrained weights
       pretrained_encoder: False
       # Whether the visual encoder backbone will be trained.
-      train_encoder: True
+      train_encoder: False
       # Whether to reset the critic linear layer
       reset_critic: True
 
       # Model parameters
-      backbone: resnet18
+      backbone: resnet50_clip_avgpool
       rnn_type: LSTM
       num_recurrent_layers: 2

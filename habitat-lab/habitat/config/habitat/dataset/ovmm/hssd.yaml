@@ -10,3 +10,6 @@ data_path: data/datasets/ovmm/{split}/episodes.json.gz
 scenes_dir: data/hssd-hab/
 viewpoints_matrix_path: data/datasets/ovmm/{split}/viewpoints.npy
 transformations_matrix_path: data/datasets/ovmm/{split}/transformations.npy
+# content_scenes: ["102344022"]
+
+

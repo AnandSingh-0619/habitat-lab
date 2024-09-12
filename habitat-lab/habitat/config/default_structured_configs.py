@@ -654,7 +654,7 @@ class StartReceptacleSensorConfig(LabSensorConfig):
 @dataclass
 class ObjectEmbeddingSensorConfig(LabSensorConfig):
     type: str = "ObjectEmbeddingSensor"
-    embeddings_file: str = "data/objects/clip_embeddings.pickle"
+    embeddings_file: str = "data/objects/clip_embeddings_og.pickle"
     dimensionality: int = 512
 
 

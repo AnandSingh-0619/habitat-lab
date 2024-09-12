@@ -688,6 +688,7 @@ class PPOTrainer(BaseRLTrainer):
                 requeue_stats["window_episode_stats"]
             )
             resume_run_id = requeue_stats.get("run_id", None)
+            # resume_run_id = None
 
         with (
             get_writer(

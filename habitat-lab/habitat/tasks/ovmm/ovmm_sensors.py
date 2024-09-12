@@ -26,8 +26,9 @@ from habitat.tasks.rearrange.sub_tasks.nav_to_obj_sensors import (
     NavToPosSucc,
 )
 from habitat.tasks.rearrange.sub_tasks.pick_sensors import RearrangePickSuccess
-
-
+import time
+from habitat.core.logging import logger
+import cv2
 @registry.register_sensor
 class ObjectCategorySensor(Sensor):
     cls_uuid: str = "object_category"
@@ -115,7 +116,7 @@ class ObjectEmbeddingSensor(Sensor):
         category_name = episode.object_category
         return self._embeddings[category_name]
 
-
+    
 @registry.register_sensor
 class GoalReceptacleSensor(ObjectCategorySensor):
     cls_uuid: str = "goal_receptacle"
@@ -200,13 +201,69 @@ class ObjectSegmentationSensor(Sensor):
             high=1,
             dtype=np.uint8,
         )
+    # def get_observation(self, observations, *args, episode, task, **kwargs):
+    #     if np.random.random() < self._blank_out_prob:
+    #         return np.zeros_like(
+    #             observations[self.panoptic_uuid], dtype=np.uint8
+    #         )
+    #     else:
+    #         # start_time = time.time()
+    #         segmentation_sensor = np.zeros_like(
+    #             observations[self.panoptic_uuid], dtype=np.uint8
+    #         )
 
+    #         for g in episode.candidate_objects_hard:
+    #             object_id = self._sim.scene_obj_ids[int(g.object_id)] + self._object_ids_start
+    #             segmentation_sensor[observations[self.panoptic_uuid] == object_id] = 1.0
+
+    #         non_zero_pixels = np.nonzero(segmentation_sensor)
+    #         if not non_zero_pixels[0].size:  # Check for empty mask efficiently
+    #             return segmentation_sensor
+    #         # end_time1 = time.time()  # End timing
+    #         # elapsed_time = end_time1 - start_time  # Calculate elapsed time
+    #         # logger.info(f"Time taken for 1 Object segmentation: {elapsed_time:.6f} seconds")
+
+    #         min_y, max_y = np.min(non_zero_pixels[0]), np.max(non_zero_pixels[0])
+    #         min_x, max_x = np.min(non_zero_pixels[1]), np.max(non_zero_pixels[1])
+    #         center_x = (min_x + max_x) // 2
+    #         center_y = (min_y + max_y) // 2
+    #         height = max_y - min_y + 1  # Add 1 to ensure correct mask size
+    #         width = max_x - min_x + 1
+
+    #         # Pre-compute sigma based on maximum allowed value for efficiency
+    #         max_sigma = 14.0
+    #         sigma_x = min(width / 25, max_sigma)
+    #         sigma_y = min(height / 25, max_sigma)
+    #         # end_time2 = time.time()  # End timing
+    #         # elapsed_time = end_time2 - end_time1  # Calculate elapsed time
+    #         # logger.info(f"Time taken for 2 Object segmentation: {elapsed_time:.6f} seconds")
+
+    #         # Efficient distance calculation with vectorization and broadcasting
+    #         y_grid, x_grid = np.ogrid[0:segmentation_sensor.shape[0], 0:segmentation_sensor.shape[1]]
+    #         distance_sq = ((x_grid - center_x)**2 / (2 * sigma_x**2) +
+    #                     (y_grid - center_y)**2 / (2 * sigma_y**2))
+            
+    #         # Create Gaussian mask directly in-place
+    #         segmentation_sensor = np.exp(-distance_sq)
+    #         # end_time3 = time.time()  # End timing
+    #         # elapsed_time = end_time3 - end_time2  # Calculate elapsed time
+    #         # logger.info(f"Time taken for 3 Object segmentation: {elapsed_time:.6f} seconds")
+
+    #         mask = np.expand_dims(segmentation_sensor, axis=2)
+    #         # cv2.imwrite('gaussian_heatmap.png', mask * 255) 
+    #         # end_time4 = time.time()  # End timing
+    #         # elapsed_time = end_time4 - end_time3  # Calculate elapsed time
+    #         # logger.info(f"Time taken for 4 Object segmentation: {elapsed_time:.6f} seconds")
+
+    #     return mask
+        
     def get_observation(self, observations, *args, episode, task, **kwargs):
         if np.random.random() < self._blank_out_prob:
             return np.zeros_like(
                 observations[self.panoptic_uuid], dtype=np.uint8
             )
         else:
+            # start_time = time.time()
             segmentation_sensor = np.zeros_like(
                 observations[self.panoptic_uuid], dtype=np.uint8
             )
@@ -216,6 +273,10 @@ class ObjectSegmentationSensor(Sensor):
                     == self._sim.scene_obj_ids[int(g.object_id)]
                     + self._object_ids_start
                 )
+            # end_time = time.time()  # End timing
+            # elapsed_time = end_time - start_time  # Calculate elapsed time
+            # logger.info(f"Time taken for object segmentation: {elapsed_time:.6f} seconds")
+
             return segmentation_sensor
 
 
@@ -225,6 +286,41 @@ class RecepSegmentationSensor(ObjectSegmentationSensor):
 
     def _get_recep_goals(self, episode):
         raise NotImplementedError
+    
+    # def get_observation(self, observations, *args, episode, task, **kwargs):
+    #     recep_goals = self._get_recep_goals(episode)
+    #     if np.random.random() < self._config.blank_out_prob:
+    #         return np.zeros_like(
+    #             observations[self.panoptic_uuid], dtype=np.uint8
+    #         )
+    #     else:
+    #         segmentation_sensor = np.zeros_like(
+    #             observations[self.panoptic_uuid], dtype=np.uint8
+    #         )
+    #         for g in recep_goals:
+    #             object_id = int(g.object_id) + self._sim.habitat_config.object_ids_start
+    #             segmentation_sensor[observations[self.panoptic_uuid] == object_id] = 1.0
+
+    #         non_zero_pixels = np.nonzero(segmentation_sensor)
+    #         if not non_zero_pixels[0].size:  # Check for empty mask efficiently
+    #             return segmentation_sensor
+    #         min_y, max_y = np.min(non_zero_pixels[0]), np.max(non_zero_pixels[0])
+    #         min_x, max_x = np.min(non_zero_pixels[1]), np.max(non_zero_pixels[1])
+    #         center_x = (min_x + max_x) // 2
+    #         center_y = (min_y + max_y) // 2
+    #         height = max_y - min_y + 1  
+    #         width = max_x - min_x + 1
+    #         max_sigma = 14.0
+    #         sigma_x = min(width / 25, max_sigma)
+    #         sigma_y = min(height / 25, max_sigma)
+    #         # Efficient distance calculation with vectorization and broadcasting
+    #         y_grid, x_grid = np.ogrid[0:segmentation_sensor.shape[0], 0:segmentation_sensor.shape[1]]
+    #         distance_sq = ((x_grid - center_x)**2 / (2 * sigma_x**2) +
+    #                     (y_grid - center_y)**2 / (2 * sigma_y**2))
+    #         # Create Gaussian mask directly in-place
+    #         segmentation_sensor = np.exp(-distance_sq)
+    #         mask = np.expand_dims(segmentation_sensor, axis=2)
+    #     return mask
 
     def get_observation(self, observations, *args, episode, task, **kwargs):
         recep_goals = self._get_recep_goals(episode)
@@ -474,6 +570,8 @@ class OVMMFindObjectPhaseSuccess(Measure):
         nav_orient_to_pick_succ = task.measurements.measures[
             OVMMNavOrientToPickSucc.cls_uuid
         ].get_metric()
+        # if(nav_orient_to_pick_succ):
+        #     print("reached object")
         self._metric = nav_orient_to_pick_succ or self._metric
 
 
