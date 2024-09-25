@@ -231,7 +231,7 @@ class ResNet(nn.Module):
             block, ngroups, base_planes * 2 * 2, layers[2], stride=2
         )
         self.layer4 = self._make_layer(
-            block, ngroups, base_planes * 2 * 2 * 2, layers[3], stride=2
+            block, ngroups, base_planes * 2 * 2 * 2, layers[3], stride=1
         )
 
         self.final_channels = self.inplanes
